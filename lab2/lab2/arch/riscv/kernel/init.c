@@ -5,17 +5,12 @@
 
 void intr_enable(void) {
     // 设置 sstatus 的 SPIE 位为 1，启用中断
-    unsigned long sstatus = read_csr(sstatus);
-    sstatus |= (1UL << 5);  // SPIE 位
-    sstatus |= (1UL << 1);  // SIE 位
-    write_csr(sstatus, sstatus);
+    set_csr(sstatus, 1UL << 5);
 }
 
 void intr_disable(void) {
     // 清除 sstatus 的 SIE 位，禁用中断
-    unsigned long sstatus = read_csr(sstatus);
-    sstatus &= ~(1UL << 1); // 清除 SIE 位
-    write_csr(sstatus, sstatus);
+    clear_csr(sstatus, 1UL << 5);
 }
 
 void idt_init(void) {
