@@ -44,7 +44,6 @@ void task_init(void) {
     }
     
     task_init_done = 1;
-    current = task[0]; // 设置当前任务为 task[0]
 }
 
 void call_first_process() {
@@ -85,16 +84,13 @@ void do_timer(void) {
     if (current->counter == 0) {
         // 运行时间已耗尽，调用调度函数
         schedule();
-    } else {
-        // 检查当前是否需要进行抢占式调度
-        schedule();
     }
 }
 
 
 // Select the next task to run. If all tasks are done(counter=0), reinitialize all tasks.
 void schedule(void) {
-    struct task_struct* next_task = NULL;
+    struct task_struct* next_task = ((void *)0);
     int min_priority = __INT_MAX__;
     int min_counter = __INT_MAX__;
     unsigned char next = 0;
@@ -102,9 +98,8 @@ void schedule(void) {
     // 遍历所有任务，从 LAST_TASK 到 FIRST_TASK
     for (int i = NR_TASKS - 1; i >= 0; --i) {
         if (task[i] && task[i]->state == TASK_RUNNING && task[i]->counter > 0) {
-            // 选择优先级最高的任务，如果优先级相同，选择剩余时间最少的任务
-            if ((task[i]->priority < min_priority) ||
-                (task[i]->priority == min_priority && task[i]->counter < min_counter)) {
+            // 选择剩余时间最少的任务，如果剩余时间相同，按遍历顺序选择
+            if (task[i]->counter < min_counter) {
                 min_priority = task[i]->priority;
                 min_counter = task[i]->counter;
                 next_task = task[i];
@@ -147,7 +142,7 @@ void do_timer(void) {
 
 // Select the task with highest priority and lowest counter to run. If all tasks are done(counter=0), reinitialize all tasks.
 void schedule(void) {
-  struct task_struct* next_task = NULL;
+  struct task_struct* next_task = ((void *)0);
   int highest_priority = __INT_MAX__;
   int min_counter = __INT_MAX__;
   unsigned char next = 0;
@@ -167,7 +162,7 @@ void schedule(void) {
   }
 
   // If no runnable task is found, reinitialize tasks using init_test_case and reattempt scheduling
-  if (next_task == NULL) {
+  if (!next_task) {
       init_test_case();
       schedule();
       return;
