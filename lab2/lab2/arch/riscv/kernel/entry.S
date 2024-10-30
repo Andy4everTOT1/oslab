@@ -64,18 +64,47 @@ __switch_to:
 	li    a4,  40 
 	add   a3, a0, a4
 	add   a4, a1, a4
-	# TODO: Save context into prev->thread
 
+	# DONE: Save context into prev->thread
+	sd ra, 0*reg_size(a3)
+	sd sp, 1*reg_size(a3)
+	sd s0, 2*reg_size(a3)
+	sd s1, 3*reg_size(a3)
+	sd s2, 4*reg_size(a3)
+	sd s3, 5*reg_size(a3)
+	sd s4, 6*reg_size(a3)
+	sd s5, 7*reg_size(a3)
+	sd s6, 8*reg_size(a3)
+	sd s7, 9*reg_size(a3)
+	sd s8, 10*reg_size(a3)
+	sd s9, 11*reg_size(a3)
+	sd s10, 12*reg_size(a3)
+	sd s11, 13*reg_size(a3)
   
-	# TODO: Restore context from next->thread
+	# DONE: Restore context from next->thread
+	ld ra, 0*reg_size(a4)
+	ld sp, 1*reg_size(a4)
+	ld s0, 2*reg_size(a4)
+	ld s1, 3*reg_size(a4)
+	ld s2, 4*reg_size(a4)
+	ld s3, 5*reg_size(a4)
+	ld s4, 6*reg_size(a4)
+	ld s5, 7*reg_size(a4)
+	ld s6, 8*reg_size(a4)
+	ld s7, 9*reg_size(a4)
+	ld s8, 10*reg_size(a4)
+	ld s9, 11*reg_size(a4)
+	ld s10, 12*reg_size(a4)
+	ld s11, 13*reg_size(a4)
 
-  
 	# return to ra
 	ret
 
 
 .globl __init_sepc
 __init_sepc:
-  	# TODO
+  	# DONE
+	la t0, test
+	csrw sepc, t0
 
 	sret
