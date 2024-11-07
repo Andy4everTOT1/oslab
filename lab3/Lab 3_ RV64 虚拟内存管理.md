@@ -29,8 +29,8 @@
 
 | 姓名 | 学号 | 分工 | 分配分数 |
 | --- | --- | --- | --- |
-|  |  |  | 50% |
-|  |  |  | 50% |
+| 安瑞和 | 3220106416 | 完成部分实验报告和代码 | 50% |
+| 陈申尧 | 3220101837 | 完成部分实验报告和代码 | 50% |
 
 
 
@@ -662,7 +662,50 @@ lab3中各个部分**在物理空间中**的分布：
 
 ```shell
 _supervisor:
-	/* your code */
+    # 1. 设置 satp 寄存器为0，暂时关闭 MMU
+    li t0, 0
+    csrw satp, t0
+
+    # 2. 设置 sp 的值为 init_stack_top 的物理地址
+    la sp, init_stack_top
+
+    # 3. 调用 paging_init 函数建立页表
+    la t0, paging_init
+    jalr t0
+
+    # 4. 设置 satp 的值以打开 MMU
+    # 从 _end 开始分配物理空间，即根页表的地址为 _end
+    la t0, _end
+    srli t0, t0, 12           # 页表基地址右移 12 位，符合 satp 格式
+    li t1, 0x8000000000000000 # MODE = 8 (Sv39 模式)
+    or t0, t0, t1
+    csrw satp, t0             # 写入 satp 寄存器以开启分页
+
+    # 5. 执行 sfence.vma 指令同步虚拟内存相关映射
+    sfence.vma
+
+    # 6. 设置 stvec 为异常处理函数 trap_s 在虚拟地址空间下的地址
+    la t0, trap_s
+    li t1, 0xffffffc000000000 # 根据提示将物理地址转为虚拟地址
+    add t0, t0, t1            # trap_s 虚拟地址 = trap_s 物理地址 + 偏移量
+    csrw stvec, t0
+
+    # 7. 记录 start_kernel 在虚拟地址空间下的地址，加载到 s0 寄存器中
+    la s0, start_kernel
+    add s0, s0, t1            # start_kernel 虚拟地址 = start_kernel 物理地址 + 偏移量
+
+    # 8. 设置 sp 的值为虚拟地址空间下的 init_stack_top
+    la sp, init_stack_top
+    add sp, sp, t1            # init_stack_top 虚拟地址 = init_stack_top 物理地址 + 偏移量
+
+    # 9. 设置 sstatus.spp = 0，使得进入用户程序时 CPU 处于 U 态
+    csrr t0, sstatus
+    li t1, ~0x100             # 清除 SPP 位 (sstatus[8])
+    and t0, t0, t1
+    csrw sstatus, t0
+
+    # 10. 使用 jr 指令跳转到 start_kernel（读取之前记录在寄存器中的值）
+    jr s0
 ```
 
 
@@ -874,12 +917,16 @@ lab3 与 lab2 不同的地方在于我们区分了用户栈和内核栈，并实
 ```assembly
 trap_s:
 	# TODO: swap sp and sscratch, now sp point to kernel stack, sscratch point to user stack
-	
+	csrr t0, sscratch
+	csrw sscratch, sp
+	mv sp, t0
 
 ...
 
 	# TODO: swap sp and sscratch, now sp point to user stack, sscratch point to kernel stack
-	
+	csrr t0, sscratch
+	csrw sscratch, sp
+	mv sp, t0
 
 	sret
 ```
@@ -893,15 +940,19 @@ __switch_to:
 ...
 	
 	# TODO: save sscratch into prev->sscratch
-	
+	csrr t0, sscratch
+	sd t0, 14*reg_size(a3)
 	# TODO: save satp into prev->satp
-  
+	csrr t0, satp
+	sd t0, 15*reg_size(a3)
 ...
 
 	# TODO: load sscratch from next->sscratch
-
+	ld t0, 14*reg_size(a4)
+	csrw sscratch, t0
 	# TODO: load satp from next->satp
-  
+	ld t0, 15*reg_size(a4)
+	csrw satp, t0
 	# return to ra
 	ret
 ```
@@ -915,7 +966,9 @@ __init_sepc:
 	li t0, 0x1000000
 	csrw sepc, t0
 	# TODO: swap sp and sscratch, now sp point to user stack, sscratch point to kernel stack
-	
+	csrr t1, sscratch
+	csrw sscratch, sp
+	mv sp, t1
 	sret
 ```
 
