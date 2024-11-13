@@ -104,7 +104,7 @@ void task_init(void) {
       (&_end - &data_start) * sizeof(uint64_t),
       PTE_V | PTE_R | PTE_W
     );
-    // 10. 将必要的硬件地址（如 0x10000000 为起始地址的 UART ）进行等值映射 ( 可以映射连续 1MB 大小 )，无偏移，PTE_V | PTE_R 为映射的读写权限
+    // 10. 将必要的硬件地址（如 0x10000000 为起始地址的 UART ）进行等值映射 ( 可以映射连续 1MB 大小 )，无偏移，PTE_V | PTE_R | PTE_W 为映射的读写权限
     create_mapping(
       pgtbl,
       0x10000000,
