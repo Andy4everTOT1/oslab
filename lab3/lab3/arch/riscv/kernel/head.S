@@ -108,17 +108,21 @@ _supervisor:
 
     # 6. 设置 stvec 为异常处理函数 trap_s 在虚拟地址空间下的地址
     la t0, trap_s
-    li t1, 0xffffffc000000000 # 根据提示将物理地址转为虚拟地址
-    add t0, t0, t1            # trap_s 虚拟地址 = trap_s 物理地址 + 偏移量
+    li t1, 0x80000000
+	sub t0, t0, t1
+    li t2, 0xffffffc000000000
+    add t0, t0, t2            # 虚拟地址 = 物理地址 - 0x80000000 + 0xffffffc00000000
     csrw stvec, t0
 
     # 7. 记录 start_kernel 在虚拟地址空间下的地址，加载到 s0 寄存器中
     la s0, start_kernel
-    add s0, s0, t1            # start_kernel 虚拟地址 = start_kernel 物理地址 + 偏移量
+	sub s0, s0, t1
+    add s0, s0, t2            # 虚拟地址 = 物理地址 - 0x80000000 + 0xffffffc00000000
 
     # 8. 设置 sp 的值为虚拟地址空间下的 init_stack_top
     la sp, init_stack_top
-    add sp, sp, t1            # init_stack_top 虚拟地址 = init_stack_top 物理地址 + 偏移量
+	sub sp, sp, t1
+    add sp, sp, t2            # 虚拟地址 = 物理地址 - 0x80000000 + 0xffffffc00000000
 
     # 9. 设置 sstatus.spp = 0，使得进入用户程序时 CPU 处于 U 态
     csrr t0, sstatus
