@@ -128,9 +128,9 @@ static int vprintfmt(int (*putch)(int), const char *fmt, va_list vl) {
 
   long syscall_ret, fd = 1;
   buffer[tail++] = '\0';
-  // TODO: 完成系统调用，将 buffer 中的内容写入文件描述符 fd 中，返回输出字符串的大小
-
-
+  // DONE: 完成系统调用，将 buffer 中的内容写入文件描述符 fd 中，返回输出字符串的大小
+  struct ret_info ret = u_syscall(SYS_WRITE, fd, buffer, tail, 0, 0, 0);
+  syscall_ret = (long)ret.a0;
   return syscall_ret;
 }
 

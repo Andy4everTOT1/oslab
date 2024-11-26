@@ -44,9 +44,9 @@ _start:
 	li t1, 0xB000
 	csrs medeleg, t1
 
-	# TODO: 把用户系统调用（syscall_from_U_mode）委托给 S 模式处理
-
-
+	# DONE: 把用户系统调用（syscall_from_U_mode）委托给 S 模式处理
+	li t1, 0x100
+	csrs medeleg, t1
 
 	# .bss 段全部置 0
 	la t1, bss_start
@@ -131,8 +131,9 @@ _supervisor:
 	li t1, 0x100
 	csrc sstatus, t1
 
-	# TODO: 设置sstatus.sum = 1，使得S态可以访问U态的地址空间，便于后续的字符串输出
-
+	# DONE: 设置sstatus.sum = 1，使得S态可以访问U态的地址空间，便于后续的字符串输出
+	li t1, 0x40000
+	csrs sstatus, t1
 
 	# 跳转到 start_kernel
 	jr s0
