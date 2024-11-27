@@ -35,8 +35,7 @@ struct ret_info syscall(uint64_t syscall_num, uint64_t arg0, uint64_t arg1, uint
 
     default:
         printf("Unknown syscall! syscall_num = %d\n", syscall_num);
-        while (1)
-            ;
+        while (1);
         break;
     }
     return ret;
