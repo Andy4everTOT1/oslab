@@ -42,8 +42,9 @@ void task_init(void) {
     task[i]->thread.sp = (uint64_t)task[i] + PAGE_SIZE; // 内核栈的栈底
     task[i]->thread.ra = (uint64_t)__init_sepc;
 
-    // TODO: initialize task[i]->mm.vm using kmalloc and set the vm_list using INIT_LIST_HEAD
-    
+    // DONE: initialize task[i]->mm.vm using kmalloc and set the vm_list using INIT_LIST_HEAD
+    task[i]->mm.vm = (struct vm_area_struct*)kmalloc(sizeof(struct vm_area_struct));
+    INIT_LIST_HEAD(&(task[i]->mm.vm->vm_list));
     
     // DONE: task[i]的物理地址
     uint64_t task_addr = PHYSICAL_ADDR((uint64_t)&user_program_start) + i * PAGE_SIZE;

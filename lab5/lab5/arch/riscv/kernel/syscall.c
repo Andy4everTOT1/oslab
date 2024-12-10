@@ -27,7 +27,7 @@ struct ret_info syscall(uint64_t syscall_num, uint64_t arg0, uint64_t arg1, uint
         break;
     }
     case SYS_MMAP: {
-        // TODO: implement mmap
+        // DONE: implement mmap
         // 1. create a new vma struct (kmalloc), if kmalloc failed, return -1
         // 2. initialize the vma struct
         // 2.1 set the vm_start and vm_end according to arg0 and arg1
@@ -35,12 +35,24 @@ struct ret_info syscall(uint64_t syscall_num, uint64_t arg0, uint64_t arg1, uint
         // 2.3 set the mapped flag to 0
         // 3. add the vma struct to the mm_struct's vma list
         // return the vm_start
-        
+        struct vm_area_struct *vma = (struct vm_area_struct *)kmalloc(sizeof(struct vm_area_struct));
+        if (!vma) {
+            ret.a0 = -1;
+            break;
+        }
+        INIT_LIST_HEAD(&vma->vm_list);
+        vma->vm_start = arg0;
+        vma->vm_end = arg0 + arg1;
+        vma->vm_flags = arg2;
+        vma->mapped = 0;
+        list_add(&(vma->vm_list), &(current->mm.vm->vm_list));
+        ret.a0 = vma->vm_start;
+
         break;
 
     }
     case SYS_MUNMAP: {
-        // TODO: implement munmap
+        // DONE: implement munmap
         // 1. find the vma according to arg0 and arg1
         // note: you can iterate the vm_list by list_for_each_entry(vma, &current->mm.vm->vm_list, vm_list), then you can use `vma` in your loop
         // 2. if the vma mapped, free the physical pages (free_pages). Using `get_pte` to get the corresponding pte.
@@ -49,6 +61,25 @@ struct ret_info syscall(uint64_t syscall_num, uint64_t arg0, uint64_t arg1, uint
         // 5. free the vma struct (kfree).
         // return 0 if success, otherwise return -1
 
+        ret.a0 = -1;
+        struct vm_area_struct *vma;
+        list_for_each_entry(vma, &current->mm.vm->vm_list, vm_list) {
+            if (vma->vm_start == arg0 && vma->vm_end == (arg0 + arg1)) {
+                // task[i]->satp = root_page_table >> 12 | 0x8000000000000000 | (((uint64_t) (new_task->pid))  << 44);
+                uint64_t* pgtbl = (current->satp & 0x00000fffffffffff) << 12;
+                if (vma->mapped) {
+                    uint64_t pte = get_pte(pgtbl, vma->vm_start);
+                    uint64_t pa = ((pte >> 10) << 12);
+                    free_pages(pa);
+                }
+                // PTE_V置0
+                create_mapping(pgtbl, vma->vm_start, 0, vma->vm_end - vma->vm_start, 0);
+                list_del(&(vma->vm_list));
+                kfree(vma);
+                ret.a0 = 0;
+                break;
+            }
+        }
 
         // flash the TLB
         asm volatile ("sfence.vma");

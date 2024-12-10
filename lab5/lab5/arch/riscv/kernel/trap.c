@@ -26,9 +26,9 @@ void handler_s(uint64_t cause, uint64_t epc, uint64_t sp) {
       uint64_t stval;
       uint64_t* sp_ptr = (uint64_t*)(sp);
 
-      // TODO: 
+      // DONE: 
       // 1. get the faulting address from stval register
-
+      asm volatile("csrr %0, stval" : "=r"(stval));
       
 
       printf("Page fault! epc = 0x%016lx, stval = 0x%016lx\n", epc, stval);
@@ -36,15 +36,37 @@ void handler_s(uint64_t cause, uint64_t epc, uint64_t sp) {
 
       struct vm_area_struct* vma;
       list_for_each_entry(vma, &current->mm.vm->vm_list, vm_list) {
-        // TODO: 
+        // DONE: 
         // 2. check whether the faulting address is in the range of a vm area
         // 3. check the permission of the vm area. The vma must be PTE_X/R/W according to the faulting cause, and also be PTE_V, PTE_U
         // 4. if the faulting address is valid, allocate physical pages, map it to the vm area, mark the vma mapped(vma->mapped = 1), and return
         // 5. otherwise, print error message and add 4 to the sepc
         // 6. if the faulting address is not in the range of any vm area, add 4 to the sepc (DONE)
-
-        
-        
+        if (vma->vm_start <= stval && stval <= vma->vm_end) {
+          if (
+              (vma->vm_flags & PTE_U) && 
+              (vma->vm_flags & PTE_V) &&
+              (
+                (cause==0xc && (vma->vm_flags & PTE_X)) || 
+                (cause==0xd && (vma->vm_flags & PTE_R)) || 
+                (cause==0xf && (vma->vm_flags & PTE_W) && (vma->vm_flags & PTE_R))
+              )
+          ) {
+            uint64_t* pgtbl = (current->satp & 0x00000fffffffffff) << 12;
+            uint64_t pa = alloc_pages((vma->vm_end - vma->vm_start) / PAGE_SIZE);
+            create_mapping(pgtbl, vma->vm_start, pa, vma->vm_end - vma->vm_start, vma->vm_flags);
+            vma->mapped=1;
+            return;
+          }
+          else {
+            printf("Permission denied! Required: 0x%lx, Actual: 0x%lx\n", 
+                (cause==0xc ? PTE_X : (cause==0xd ? PTE_R : PTE_W)),
+                vma->vm_flags
+            );
+            sp_ptr[16] += 4;
+            return;
+          }
+        }
       }
       printf("Unhandled page fault! addr = 0x%016lx\n", stval);
       sp_ptr[16] += 4;
