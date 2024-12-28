@@ -18,6 +18,10 @@
 #define SFS_FLAG_READ (0x1)
 #define SFS_FLAG_WRITE (0x2)
 
+#define BLOCK_SIZE 4096
+#define NUM_ENTRY 128
+#define BUFFER_SIZE 1024
+
 struct sfs_super {
     uint32_t magic;
     uint32_t blocks;
@@ -114,23 +118,30 @@ int sfs_get_files(const char* path, char* files[]);
 // -------------------------------------------------------
 // ------------ 以下数据结构和缓存设计可自行修改---------------
 
+struct bitmap {
+    char freemap[4096];
+};
+
+struct list_entry_t
+{
+    struct list_entry_t* next;
+    struct list_entry_t* prev;
+    struct sfs_memory_block* data;
+};
+
 struct sfs_fs {
-    // sfs_super super;           // SFS 的超级块
-    // bitmap *freemap;           // freemap 区域管理，可自行设计
-    // bool super_dirty;          // 超级块或 freemap 区域是否有修改
-    // list_entry_t inode_list;   // 加载进来的 block 组织起来的链表 （数据结构可自行设计）
-    // list_entry_t *hash_list;   // Hash 表 （数据结构可自行设计）
+    struct sfs_super super;           // SFS 的超级块
+    struct bitmap *freemap;           // freemap 区域管理，可自行设计
+    bool super_dirty;                 // 超级块或 freemap 区域是否有修改
+    struct list_entry_t* block_list[BUFFER_SIZE];   // Hash 表 + 链表的结构 （数据结构可自行设计）
 };
 
 // 内存中的 block 缓存结构
 struct sfs_memory_block {
-    // union {
-    //     sfs_inode* din;   // 可能是 inode 块
-    //     char *block;      // 可能是数据块
-    // } block;
+    void* block;
     // bool is_inode;        // 是否是 inode
-    // uint32_t blockno;     // block 编号
-    // bool dirty;           // 脏位，保证写回数据
-    // int reclaim_count;    // 指向次数，因为硬链接有可能会打开同一个 inode，所以需要记录次数
-    // list_entry_t inode_link; // 在 sfs_fs 内 inode_list 链表中的位置 （可根据自己的数据结构设计自行修改）
+    uint32_t blockno;     // block 编号
+    bool dirty;           // 脏位，保证写回数据
+    int reclaim_count;    // 指向次数，因为硬链接有可能会打开同一个 inode，所以需要记录次数
+    struct list_entry_t* inode_link; // 在 sfs_fs 内 inode_list 链表中的位置 （可根据自己的数据结构设计自行修改）
 };

@@ -1,0 +1,19 @@
+#BasedOnStyle: Google
+DerivePointerAlignment: false
+PointerAlignment: Right
+ColumnLimit: 120
+
+AllowShortFunctionsOnASingleLine: Inline
+BasedOnStyle: LLVM
+UseTab: Never
+IndentWidth: 4
+TabWidth: 4
+BreakBeforeBraces: Attach
+AllowShortIfStatementsOnASingleLine: false
+NamespaceIndentation: All
+FixNamespaceComments: false
+
+# Default for clang-8, changed in later clangs. Set explicitly for forwards
+# compatibility for students with modern clangs
+IncludeBlocks: Preserve
+SortIncludes: false
