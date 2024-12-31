@@ -612,9 +612,10 @@ int sfs_get_files(const char *path, char *files[]) {
     int nameStart = 1, name_end = 1;
     uint32_t ino = 1, preino = 1, nextino = 1;
     while (path[name_end]) {
-        if (path[nameStart] == '/')
+        if (path[nameStart] == '/') {
+            printf("[sfs_get_files]break");
             return -1; // /连用，无法识别
-        else if (path[nameStart] == 0)
+        } else if (path[nameStart] == 0)
             break; // 合法情况，如/home/
         // 如果上层目录是文件
         if (node->type == SFS_FILE)
@@ -622,7 +623,7 @@ int sfs_get_files(const char *path, char *files[]) {
         // 找到下一个'/'的位置
         for (name_end += 1; path[name_end] && path[name_end] != '/'; name_end++)
             ;
-        printf("[sfs_open]ino: %d, str index: %d %d\n", ino, name_end, nameStart);
+        printf("[sfs_get_files]ino: %d, str index: %d %d\n", ino, name_end, nameStart);
         bool ifok = 0;
         int entryNum = node->size / sizeof(struct sfs_entry); // entry的总数量
         // 直接索引
@@ -649,7 +650,7 @@ int sfs_get_files(const char *path, char *files[]) {
             if (ifok) // 如果已经找到就结束
                 break;
         }
-        printf("[sfs_open]%s\n", ifok == 0 ? "not find" : "find");
+        printf("[sfs_get_files]%s\n", ifok == 0 ? "not find" : "find");
         // 找不到路径
         if (!ifok) {
             return -1;
@@ -663,19 +664,23 @@ int sfs_get_files(const char *path, char *files[]) {
         node = nextNode;
         ino = nextino;
         nameStart = name_end + 1;
-        printf("[sfs_open]ino: %d preino: %d\n\n\n", ino, preino);
+        printf("[sfs_get_files]ino: %d preino: %d\n", ino, preino);
     }
 
     if (node->type == SFS_FILE)
         return 0; // 当前目录是一个文件
 
-    uint32_t tot;
+    uint32_t count = 0;
     int numBlock = (node->size + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    printf("[sfs_get_files]numBlock: %d\n", numBlock);
     // 直接索引
     for (int i = 0; i < SFS_NDIRECT && i < numBlock; i++) {
+        printf("[sfs_get_files]direct[%d]: %d\n", i, node->direct[i]);
         struct sfs_entry *entrys = readBlock(node->direct[i]);
-        for (int j = 0; j < NUM_ENTRY && i * BLOCK_SIZE + j * sizeof(struct sfs_entry) < node->size; j++)
-            strcpy(files[tot++], entrys[j].filename);
+        for (int j = 0; j < NUM_ENTRY && i * BLOCK_SIZE + j * sizeof(struct sfs_entry) < node->size; j++) {
+            printf("[sfs_get_files]direct[%d][%d]: %s\n", i, j, entrys[j].filename);
+            strcpy(files[count++], entrys[j].filename);
+        }
         releaseBlock(node->direct[i]);
     }
     // 间接索引
@@ -684,10 +689,10 @@ int sfs_get_files(const char *path, char *files[]) {
         for (int i = SFS_NDIRECT; i < numBlock; i++) {
             struct sfs_entry *entrys = readBlock(indirect[i - SFS_NDIRECT]);
             for (int j = 0; j < NUM_ENTRY && i * BLOCK_SIZE + j * sizeof(struct sfs_entry) < node->size; j++)
-                strcpy(files[tot++], entrys[j].filename);
+                strcpy(files[count++], entrys[j].filename);
             releaseBlock(indirect[i - SFS_NDIRECT]);
         }
         releaseBlock(node->indirect);
     }
-    return tot;
+    return count;
 }
