@@ -68,7 +68,7 @@ struct list_entry_t *cacheNew(uint32_t blockno) {
         node->data->dirty = 0;
         node->data->reclaim_count = 0;
         node->data->inode_link = node;
-        disk_read(blockno, node->data->block);
+        disk_read(blockno, (uint8_t*)node->data->block);
         // 插入节点到表头
         struct list_entry_t *nextnode = SFS.block_list[hashID];
         SFS.block_list[hashID] = node;
@@ -166,7 +166,7 @@ uint32_t NewBlock() { // 暂时不考虑磁盘空间不够的情况
 }
 // 将一个inode的所有数据块写回
 void writeInode(uint32_t blockno, bool Type) {
-    struct sfs_inode *node = cacheGet(blockno);
+    struct sfs_inode *node = (struct sfs_inode *)cacheGet(blockno);
     // // 如果找不到就直接返回
     // if (node == NULL)
     //     return;
@@ -205,13 +205,15 @@ void memory_bug() {
 // -------------------------------------------------
 
 int sfs_init() {                // 应该直接读取块中的内容比较好
-    disk_read(0, (&SFS.super)); // 读取内容
+    disk_read(0, (uint8_t*)&SFS.super); // 读取内容
     SFS.freemap = (struct bitmap *)kmalloc(sizeof(struct bitmap));
     if (SFS.freemap == NULL)
         return -1;
-    disk_read(2, SFS.freemap->freemap); // 读取freemap
+    disk_read(2, (uint8_t*)SFS.freemap->freemap); // 读取freemap
     SFS.super_dirty = 0;                // 刚开始并没有修改过超级块或者freemap
-    memset(SFS.block_list, NULL, sizeof(SFS.block_list));
+    for (int i = 0; i < BUFFER_SIZE; ++i) { 
+        SFS.block_list[i] = NULL;
+    }
     sfsInited = 1;
     printf("[sfs_init]init success!\n");
     return 0;
@@ -325,7 +327,7 @@ int sfs_open(const char *path, uint32_t flags) {
                 // 不考虑间接索引
             } else { // 最后一块是满的，那就申请一个新块
                 node->direct[node->blocks] = NewBlock();
-                disk_write(node->direct[node->blocks], &newentry); // 写回新块，不用读到BufferPool里
+                disk_write(node->direct[node->blocks], (uint8_t*)&newentry); // 写回新块，不用读到BufferPool里
                 node->blocks++;
                 // 不考虑间接索引
             }
@@ -400,8 +402,8 @@ int sfs_close(int fd) {
 
     // 写回bitmap和super块
     if (SFS.super_dirty) {
-        disk_write(0, &SFS.super);
-        disk_write(2, SFS.freemap->freemap);
+        disk_write(0, (uint8_t*)&SFS.super);
+        disk_write(2, (uint8_t*)SFS.freemap->freemap);
         SFS.super_dirty = 0;
     }
 
